@@ -135,7 +135,33 @@ export function EnhancedLoginPage() {
     }
   };
 
-  // Show production signup form
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        setError(result.error.message || 'Google sign-in failed');
+        setIsLoading(false);
+        return;
+      }
+      if (result.redirected) {
+        return; // Browser will redirect to Google
+      }
+      // Session set — load user and navigate
+      loadSessionUser().finally(() => {
+        toast({ title: "✓ Login Successful", description: "Signed in with Google!" });
+        navigate('/dashboard');
+        setIsLoading(false);
+      });
+    } catch (err: any) {
+      setError(err?.message || 'Google sign-in failed');
+      setIsLoading(false);
+    }
+  };
+
   if (authMode === 'signup') {
     return (
       <div className="min-h-screen gradient-hero flex flex-col">
