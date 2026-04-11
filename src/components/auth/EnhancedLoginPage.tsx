@@ -334,6 +334,8 @@ export function EnhancedLoginPage() {
                 </svg>
                 Continue with Google
               </Button>
+
+              <div className="border-t pt-4">
                 <Button variant="outline" onClick={() => setAuthMode('signup')} className="w-full h-11 gap-2">
                   <User className="w-4 h-4" />
                   Create New Account
