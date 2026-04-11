@@ -1,0 +1,129 @@
+import { useState } from 'react';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import { AppProvider } from "@/contexts/AppContext";
+import { PremiumProvider } from "@/contexts/PremiumContext";
+import { PointsProvider } from "@/contexts/PointsContext";
+import { DemoProvider } from "@/contexts/DemoContext";
+import { AccessibilityProvider } from "@/contexts/AccessibilityContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { BackgroundWrapper } from "@/components/layout/BackgroundWrapper";
+import { SplashScreen } from "@/components/splash/SplashScreen";
+import { EnhancedLoginPage } from "@/components/auth/EnhancedLoginPage";
+import Premium from "./pages/Premium";
+import { FloatingAIAssistant } from "@/components/chat/FloatingAIAssistant";
+import { SkipLink } from "@/components/accessibility/SkipLink";
+import { ReadingGuide } from "@/components/accessibility/ReadingGuide";
+import { AccessibilityToolbar } from "@/components/accessibility/AccessibilityToolbar";
+import Dashboard from "./pages/Dashboard";
+import Education from "./pages/Education";
+import Calculators from "./pages/Calculators";
+import FirstAid from "./pages/FirstAid";
+import Emergency from "./pages/Emergency";
+import Quizzes from "./pages/Quizzes";
+import Donations from "./pages/Donations";
+import Settings from "./pages/Settings";
+import Consultation from "./pages/Consultation";
+import Medications from "./pages/Medications";
+import Games from "./pages/Games";
+import Pharmacy from "./pages/Pharmacy";
+import AccessibilityPage from "./pages/Accessibility";
+import HelpCenter from "./pages/HelpCenter";
+import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
+
+const queryClient = new QueryClient();
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/login" element={<PublicRoute><EnhancedLoginPage /></PublicRoute>} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/education" element={<ProtectedRoute><Education /></ProtectedRoute>} />
+      <Route path="/premium" element={<ProtectedRoute><Premium /></ProtectedRoute>} />
+      <Route path="/calculators" element={<ProtectedRoute><Calculators /></ProtectedRoute>} />
+      <Route path="/first-aid" element={<ProtectedRoute><FirstAid /></ProtectedRoute>} />
+      <Route path="/emergency" element={<ProtectedRoute><Emergency /></ProtectedRoute>} />
+      <Route path="/quizzes" element={<ProtectedRoute><Quizzes /></ProtectedRoute>} />
+      <Route path="/donations" element={<ProtectedRoute><Donations /></ProtectedRoute>} />
+      <Route path="/consultation" element={<ProtectedRoute><Consultation /></ProtectedRoute>} />
+      <Route path="/medications" element={<ProtectedRoute><Medications /></ProtectedRoute>} />
+      <Route path="/games" element={<ProtectedRoute><Games /></ProtectedRoute>} />
+      <Route path="/pharmacy" element={<ProtectedRoute><Pharmacy /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/accessibility" element={<ProtectedRoute><AccessibilityPage /></ProtectedRoute>} />
+      <Route path="/help" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
+const App = () => {
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem('splash_shown');
+  });
+
+  const handleSplashComplete = () => {
+    sessionStorage.setItem('splash_shown', 'true');
+    setShowSplash(false);
+  };
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <LanguageProvider>
+          <AppProvider>
+            <PremiumProvider>
+              <PointsProvider>
+                <DemoProvider>
+                  <ThemeProvider>
+                    <BackgroundWrapper>
+                      <AccessibilityProvider>
+                        <TooltipProvider>
+                          <Toaster />
+                          <Sonner />
+                          {showSplash ? (
+                            <SplashScreen onComplete={handleSplashComplete} />
+                          ) : (
+                            <BrowserRouter>
+                              <SkipLink />
+                              <ReadingGuide />
+                              <main id="main-content">
+                                <AppRoutes />
+                              </main>
+                              <FloatingAIAssistant />
+                              <AccessibilityToolbar />
+                            </BrowserRouter>
+                          )}
+                        </TooltipProvider>
+                      </AccessibilityProvider>
+                    </BackgroundWrapper>
+                  </ThemeProvider>
+                </DemoProvider>
+              </PointsProvider>
+            </PremiumProvider>
+          </AppProvider>
+        </LanguageProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
+
+export default App;
