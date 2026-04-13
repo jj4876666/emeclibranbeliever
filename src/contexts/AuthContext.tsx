@@ -23,6 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLiveUser, setIsLiveUser] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
 
   interface SupabaseProfile {
@@ -193,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value: AuthContextType = {
-    currentUser, isAuthenticated: !!currentUser, isLiveUser: true,
+    currentUser, isAuthenticated: !!currentUser, isLiveUser: true, isAuthLoading,
     login, loginWithEmecId, logout, switchAccount, registerUser, addAuditEntry, loadSessionUser,
   };
 
