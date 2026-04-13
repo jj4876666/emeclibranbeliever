@@ -8,6 +8,7 @@ interface AuthContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
   isLiveUser: boolean;
+  isAuthLoading: boolean;
   login: (role: UserRole, pin: string) => boolean;
   loginWithEmecId: (emecId: string, password: string) => boolean;
   logout: () => void;
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }
 
-  const fetchProfileWithRetry = async (userId: string, maxRetries = 4): Promise<SupabaseProfile | null> => {
+  const fetchProfileWithRetry = async (userId: string, maxRetries = 6): Promise<SupabaseProfile | null> => {
     for (let i = 0; i < maxRetries; i++) {
       const { data: profile } = await supabase
         .from('profiles')
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('user_id', userId)
         .maybeSingle();
       if (profile) return profile as unknown as SupabaseProfile;
-      await new Promise(resolve => setTimeout(resolve, 30 + (i * 30)));
+      await new Promise(resolve => setTimeout(resolve, 200 + (i * 300)));
     }
     return null;
   };
