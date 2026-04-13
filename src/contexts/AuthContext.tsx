@@ -130,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentUser(null);
         setIsLiveUser(false);
       }
+      setIsAuthLoading(false);
     });
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -141,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLiveUser(true);
         }
       }
+      setIsAuthLoading(false);
     });
 
     const savedAudit = localStorage.getItem(AUDIT_KEY);
