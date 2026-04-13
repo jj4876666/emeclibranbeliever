@@ -31,9 +31,21 @@ export function EnhancedLoginPage() {
   const [showRecovery, setShowRecovery] = useState(false);
   
   const { language, t } = useLanguage();
-  const { loadSessionUser } = useAuth();
+  const { loadSessionUser, isAuthLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Show loading spinner while auth session is being resolved (e.g. after OAuth redirect)
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen gradient-hero flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Signing you in...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Look up EMEC ID in real database
   const handleEmecIdChange = async (value: string) => {
