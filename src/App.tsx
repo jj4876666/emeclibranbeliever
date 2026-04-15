@@ -62,10 +62,17 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>;
 }
 
+function AuthEntryRoute() {
+  const { isAuthenticated, isAuthLoading } = useAuth();
+  if (isAuthLoading) return <AuthLoadingScreen />;
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<AuthEntryRoute />} />
+      <Route path="/index" element={<AuthEntryRoute />} />
       <Route path="/login" element={<PublicRoute><EnhancedLoginPage /></PublicRoute>} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
