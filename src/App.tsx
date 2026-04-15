@@ -39,15 +39,26 @@ import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
+function AuthLoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center space-y-4">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
+        <p className="text-muted-foreground text-sm">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isAuthLoading } = useAuth();
-  if (isAuthLoading) return null;
+  if (isAuthLoading) return <AuthLoadingScreen />;
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isAuthLoading } = useAuth();
-  if (isAuthLoading) return null;
+  if (isAuthLoading) return <AuthLoadingScreen />;
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>;
 }
 

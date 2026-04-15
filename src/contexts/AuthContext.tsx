@@ -143,14 +143,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
       setIsAuthLoading(false);
+    }).catch(() => {
+      setIsAuthLoading(false);
     });
+
+    // Safety timeout: ensure loading state resolves even if auth calls hang
+    const safetyTimeout = setTimeout(() => {
+      setIsAuthLoading(false);
+    }, 5000);
 
     const savedAudit = localStorage.getItem(AUDIT_KEY);
     if (savedAudit) {
       try { setAuditLog(JSON.parse(savedAudit)); } catch { setAuditLog([]); }
     }
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(safetyTimeout);
+    };
   }, []);
 
   useEffect(() => {
