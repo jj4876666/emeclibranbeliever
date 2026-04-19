@@ -98,10 +98,14 @@ export function KenyaFacilityMap({
     [userLocation]
   );
 
-  const facilities = useMemo(
-    () => (countyFilter === 'all' ? allFacilities : allFacilities.filter(f => f.county === countyFilter)),
-    [allFacilities, countyFilter]
-  );
+  const [typeFilter, setTypeFilter] = useState<'all' | 'hospital' | 'clinic' | 'dispensary'>('all');
+
+  const facilities = useMemo(() => {
+    let list = allFacilities;
+    if (countyFilter !== 'all') list = list.filter((f) => f.county === countyFilter);
+    if (typeFilter !== 'all') list = list.filter((f) => f.type === typeFilter);
+    return list;
+  }, [allFacilities, countyFilter, typeFilter]);
 
   const requestLocation = () => {
     if (!navigator.geolocation) return;
@@ -173,6 +177,17 @@ export function KenyaFacilityMap({
             </Badge>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="hospital">Hospitals</SelectItem>
+                <SelectItem value="clinic">Clinics</SelectItem>
+                <SelectItem value="dispensary">Dispensaries</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={countyFilter} onValueChange={handleCountyChange}>
               <SelectTrigger className="h-8 w-[160px] text-xs">
                 <SelectValue placeholder="Filter by county" />
@@ -245,7 +260,7 @@ export function KenyaFacilityMap({
                 <Marker
                   key={f.id}
                   position={[f.coordinates.lat, f.coordinates.lng]}
-                  icon={hospitalIcon}
+                  icon={typeIcons[f.type]}
                   eventHandlers={{ click: () => handleSelect(f) }}
                 >
                   <Popup>
