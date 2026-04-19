@@ -20,15 +20,22 @@ L.Icon.Default.mergeOptions({
 
 const facilityIcons = { hospital: Hospital, clinic: Stethoscope, dispensary: Building2 };
 
-const hospitalIcon = L.divIcon({
-  className: 'kenya-facility-marker',
-  html: `<div style="background:hsl(0 84% 55%);width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;">
-    <div style="transform:rotate(45deg);color:white;font-weight:bold;font-size:14px;">+</div>
-  </div>`,
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-  popupAnchor: [0, -28],
-});
+const makeMarker = (color: string, glyph: string) =>
+  L.divIcon({
+    className: 'kenya-facility-marker',
+    html: `<div style="background:${color};width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;">
+      <div style="transform:rotate(45deg);color:white;font-weight:bold;font-size:12px;">${glyph}</div>
+    </div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -28],
+  });
+
+const typeIcons: Record<'hospital' | 'clinic' | 'dispensary', L.DivIcon> = {
+  hospital: makeMarker('hsl(0 84% 55%)', '+'),
+  clinic: makeMarker('hsl(217 91% 55%)', 'C'),
+  dispensary: makeMarker('hsl(142 71% 40%)', 'D'),
+};
 
 const userIcon = L.divIcon({
   className: 'kenya-user-marker',
