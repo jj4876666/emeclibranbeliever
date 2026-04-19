@@ -187,6 +187,7 @@ export interface HealthFacility {
   phone: string;
   emergencyPhone: string;
   isVerified: boolean;
+  county?: string;
 }
 
 export interface Donation {
