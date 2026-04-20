@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { GoogleMapsDemo } from "@/components/maps/GoogleMapsDemo";
-import { demoFacilities } from "@/data/healthFacilities";
+import { KenyaFacilityMap } from "@/components/maps/KenyaFacilityMap";
+import { demoFacilities, withDistances } from "@/data/healthFacilities";
+import { useEffect, useMemo } from "react";
 import { 
   Phone, 
   Ambulance, 
@@ -71,8 +72,32 @@ const Emergency = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [dialedNumber, setDialedNumber] = useState('');
-  const [isOnline] = useState(true); // Simulated online status
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [selectedFacility, setSelectedFacility] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {},
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+
+  const nearbyFacilities = useMemo(
+    () => (userLocation ? withDistances(userLocation) : demoFacilities).slice(0, 12),
+    [userLocation]
+  );
 
   const handleDial = (digit: string) => {
     if (dialedNumber.length < 15) {
@@ -86,10 +111,7 @@ const Emergency = () => {
 
   const handleCall = () => {
     if (dialedNumber.length >= 3) {
-      toast({
-        title: "📞 Demo Call Initiated",
-        description: `Calling ${dialedNumber}... (Simulated for demo)`,
-      });
+      window.location.href = `tel:${dialedNumber}`;
     } else {
       toast({
         title: "Enter a number",
@@ -100,18 +122,17 @@ const Emergency = () => {
   };
 
   const handleQuickCall = (number: string, name: string) => {
-    toast({
-      title: `📞 Calling ${name}`,
-      description: `Dialing ${number}... (Simulated for demo)`,
-    });
+    const clean = number.replace(/[^0-9+]/g, '');
+    toast({ title: `Calling ${name}`, description: `Dialing ${number}` });
+    window.location.href = `tel:${clean}`;
   };
 
-  const handleNavigate = (facilityName: string) => {
-    toast({
-      title: "🗺️ Opening Navigation",
-      description: `Getting directions to ${facilityName}... (Simulated for demo)`,
-    });
-    setSelectedFacility(facilityName);
+  const handleNavigate = (facility: { name: string; coordinates: { lat: number; lng: number } }) => {
+    setSelectedFacility(facility.name);
+    const dest = `${facility.coordinates.lat},${facility.coordinates.lng}`;
+    const origin = userLocation ? `${userLocation.lat},${userLocation.lng}` : '';
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${dest}${origin ? `&origin=${origin}` : ''}&travelmode=driving`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
