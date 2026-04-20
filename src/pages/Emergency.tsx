@@ -196,10 +196,13 @@ const Emergency = () => {
 
           {/* Live Location Tab */}
           <TabsContent value="location" className="space-y-4">
-            <GoogleMapsDemo 
-              showFacilities={true} 
+            <KenyaFacilityMap
+              showFacilities={true}
               isEmergency={true}
-              onSelectFacility={(id) => setSelectedFacility(demoFacilities.find(f => f.id === id)?.name || null)} 
+              height="520px"
+              onSelectFacility={(id) =>
+                setSelectedFacility(demoFacilities.find((f) => f.id === id)?.name || null)
+              }
             />
           </TabsContent>
 
