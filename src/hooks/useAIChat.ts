@@ -109,8 +109,8 @@ export function useAIChat() {
     setIsLoading(true);
     setError(null);
 
-    // Demo/offline mode - use local responses
-    if (isDemoMode || isOfflineMode) {
+    // Only fall back to local responses when truly offline
+    if (isOfflineMode) {
       await new Promise(resolve => setTimeout(resolve, 800));
       const response = getDemoResponse(input, selectedAgeCategory, language);
       const assistantMessage: Message = {
