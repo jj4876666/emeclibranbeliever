@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { GoogleMapsDemo } from "@/components/maps/GoogleMapsDemo";
-import { demoFacilities } from "@/data/healthFacilities";
+import { KenyaFacilityMap } from "@/components/maps/KenyaFacilityMap";
+import { demoFacilities, withDistances } from "@/data/healthFacilities";
+import { useEffect, useMemo } from "react";
 import { 
   Phone, 
   Ambulance, 
@@ -71,8 +72,32 @@ const Emergency = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [dialedNumber, setDialedNumber] = useState('');
-  const [isOnline] = useState(true); // Simulated online status
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [selectedFacility, setSelectedFacility] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {},
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+
+  const nearbyFacilities = useMemo(
+    () => (userLocation ? withDistances(userLocation) : demoFacilities).slice(0, 12),
+    [userLocation]
+  );
 
   const handleDial = (digit: string) => {
     if (dialedNumber.length < 15) {
@@ -86,10 +111,7 @@ const Emergency = () => {
 
   const handleCall = () => {
     if (dialedNumber.length >= 3) {
-      toast({
-        title: "📞 Demo Call Initiated",
-        description: `Calling ${dialedNumber}... (Simulated for demo)`,
-      });
+      window.location.href = `tel:${dialedNumber}`;
     } else {
       toast({
         title: "Enter a number",
@@ -100,18 +122,17 @@ const Emergency = () => {
   };
 
   const handleQuickCall = (number: string, name: string) => {
-    toast({
-      title: `📞 Calling ${name}`,
-      description: `Dialing ${number}... (Simulated for demo)`,
-    });
+    const clean = number.replace(/[^0-9+]/g, '');
+    toast({ title: `Calling ${name}`, description: `Dialing ${number}` });
+    window.location.href = `tel:${clean}`;
   };
 
-  const handleNavigate = (facilityName: string) => {
-    toast({
-      title: "🗺️ Opening Navigation",
-      description: `Getting directions to ${facilityName}... (Simulated for demo)`,
-    });
-    setSelectedFacility(facilityName);
+  const handleNavigate = (facility: { name: string; coordinates: { lat: number; lng: number } }) => {
+    setSelectedFacility(facility.name);
+    const dest = `${facility.coordinates.lat},${facility.coordinates.lng}`;
+    const origin = userLocation ? `${userLocation.lat},${userLocation.lng}` : '';
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${dest}${origin ? `&origin=${origin}` : ''}&travelmode=driving`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -175,10 +196,13 @@ const Emergency = () => {
 
           {/* Live Location Tab */}
           <TabsContent value="location" className="space-y-4">
-            <GoogleMapsDemo 
-              showFacilities={true} 
+            <KenyaFacilityMap
+              showFacilities={true}
               isEmergency={true}
-              onSelectFacility={(id) => setSelectedFacility(demoFacilities.find(f => f.id === id)?.name || null)} 
+              height="520px"
+              onSelectFacility={(id) =>
+                setSelectedFacility(demoFacilities.find((f) => f.id === id)?.name || null)
+              }
             />
           </TabsContent>
 
@@ -236,102 +260,19 @@ const Emergency = () => {
 
           {/* Nearby Facilities with Simulated Map */}
           <TabsContent value="facilities" className="space-y-4">
-            {/* Simulated Map */}
-            <Card className="border-0 shadow-elegant overflow-hidden">
-              <div className="relative h-48 md:h-64 bg-gradient-to-br from-green-100 to-blue-100 dark:from-green-900/30 dark:to-blue-900/30">
-                {/* Simulated Map Grid */}
-                <div className="absolute inset-0 opacity-20">
-                  <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1"/>
-                      </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#grid)" />
-                  </svg>
-                </div>
-
-                {/* Simulated Roads */}
-                <div className="absolute inset-0">
-                  <div className="absolute top-1/2 left-0 right-0 h-2 bg-gray-400/40 transform -translate-y-1/2" />
-                  <div className="absolute top-0 bottom-0 left-1/3 w-2 bg-gray-400/40" />
-                  <div className="absolute top-0 bottom-0 right-1/4 w-1 bg-gray-400/30" />
-                </div>
-
-                {/* User Location */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="relative">
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg animate-pulse-soft">
-                      <Navigation className="w-4 h-4 text-primary-foreground" />
-                    </div>
-                    <div className="absolute -inset-4 rounded-full border-2 border-primary/30 animate-ping" />
-                  </div>
-                </div>
-
-                {/* Facility Markers */}
-                {demoFacilities.slice(0, 3).map((facility, i) => {
-                  const positions = [
-                    { top: '25%', left: '30%' },
-                    { top: '35%', right: '25%' },
-                    { top: '70%', left: '45%' },
-                  ];
-                  const Icon = facilityIcons[facility.type];
-                  const isSelected = selectedFacility === facility.name;
-                  
-                  return (
-                    <div 
-                      key={facility.id}
-                      className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                      style={positions[i]}
-                      onClick={() => handleNavigate(facility.name)}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all ${
-                        isSelected 
-                          ? 'bg-destructive scale-125' 
-                          : facility.type === 'hospital' 
-                            ? 'bg-red-500' 
-                            : 'bg-orange-500'
-                      }`}>
-                        <Icon className="w-5 h-5 text-white" />
-                      </div>
-                      {isSelected && (
-                        <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-background px-2 py-1 rounded text-xs font-medium shadow-md">
-                          {facility.name}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Map Legend */}
-                <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm rounded-lg p-2 text-xs shadow-md">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 rounded-full bg-primary" />
-                    <span>You</span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 rounded-full bg-red-500" />
-                    <span>Hospital</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-orange-500" />
-                    <span>Clinic</span>
-                  </div>
-                </div>
-
-                {/* Offline Badge */}
-                <div className="absolute top-2 right-2">
-                  <Badge className="bg-success/90 text-white border-0">
-                    <CheckCircle className="w-3 h-3 mr-1" />
-                    Demo Map
-                  </Badge>
-                </div>
-              </div>
-            </Card>
+            {/* Real Kenya Facility Map */}
+            <KenyaFacilityMap
+              showFacilities={true}
+              isEmergency={true}
+              height="420px"
+              onSelectFacility={(id) =>
+                setSelectedFacility(demoFacilities.find((f) => f.id === id)?.name || null)
+              }
+            />
 
             {/* Facilities List */}
             <div className="space-y-3">
-              {demoFacilities.map((facility) => {
+              {nearbyFacilities.map((facility) => {
                 const Icon = facilityIcons[facility.type];
                 const isSelected = selectedFacility === facility.name;
 
@@ -388,7 +329,7 @@ const Emergency = () => {
                             <Button 
                               size="sm" 
                               className="flex-1"
-                              onClick={() => handleNavigate(facility.name)}
+                              onClick={() => handleNavigate(facility)}
                             >
                               <Navigation className="w-4 h-4 mr-1" />
                               Directions
@@ -415,7 +356,7 @@ const Emergency = () => {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Demo Mode – Calls are simulated
+                    Tap Call to dial on your device
                   </p>
                 </div>
 
@@ -493,9 +434,8 @@ const Emergency = () => {
         <Card className="bg-muted/50 border-0">
           <CardContent className="p-4 text-center">
             <p className="text-xs text-muted-foreground">
-              <strong>Demo Mode:</strong> All calls and navigation are simulated. 
-              In a real emergency, dial your local emergency number.
-              Kenya Emergency: 999 | Universal: 112
+              In an emergency, dial your local emergency number directly.
+              Kenya Emergency: 999 · Universal: 112 · Red Cross: 1199
             </p>
           </CardContent>
         </Card>
