@@ -1,7 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -84,7 +80,7 @@ TEEN-APPROPRIATE CONTENT:
 - Be supportive about body image and self-care
 `;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -100,21 +96,22 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    
-    let userId = 'demo-user';
-    if (claimsError || !claimsData?.claims) {
-      // For demo mode: allow requests with the anon key but rate limit strictly
-      console.log('Auth validation failed, allowing demo access with strict rate limiting');
-    } else {
-      userId = claimsData.claims.sub as string;
+    // Lightweight JWT validation via Supabase Auth REST (avoids bundling supabase-js)
+    let userId = 'anon-user';
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+      if (supabaseUrl && anonKey) {
+        const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          headers: { Authorization: authHeader, apikey: anonKey },
+        });
+        if (userRes.ok) {
+          const u = await userRes.json();
+          if (u?.id) userId = u.id;
+        }
+      }
+    } catch (e) {
+      console.log('Auth validation skipped:', e);
     }
 
     // Rate limiting based on user ID or IP
