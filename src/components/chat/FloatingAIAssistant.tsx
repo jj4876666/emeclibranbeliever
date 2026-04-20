@@ -236,8 +236,8 @@ export function FloatingAIAssistant() {
     setInput('');
     setIsLoading(true);
 
-    // If demo/offline mode, use local responses
-    if (isDemoMode || isOfflineMode) {
+    // Only fall back to local responses when truly offline
+    if (isOfflineMode) {
       setTimeout(() => {
         const response = getAgeAppropriateResponse(userMessage.content, selectedAgeCategory, language);
         const assistantMessage: Message = {
