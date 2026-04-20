@@ -356,7 +356,7 @@ const Emergency = () => {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Demo Mode – Calls are simulated
+                    Tap Call to dial on your device
                   </p>
                 </div>
 
@@ -434,9 +434,8 @@ const Emergency = () => {
         <Card className="bg-muted/50 border-0">
           <CardContent className="p-4 text-center">
             <p className="text-xs text-muted-foreground">
-              <strong>Demo Mode:</strong> All calls and navigation are simulated. 
-              In a real emergency, dial your local emergency number.
-              Kenya Emergency: 999 | Universal: 112
+              In an emergency, dial your local emergency number directly.
+              Kenya Emergency: 999 · Universal: 112 · Red Cross: 1199
             </p>
           </CardContent>
         </Card>
