@@ -1,334 +1,126 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { 
-  Search, AlertTriangle, CheckCircle2, XCircle, 
-  Apple, Wheat, Milk, Egg, Fish, Cookie,
-  Mic, Volume2
-} from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle2, Volume2 } from 'lucide-react';
+import { AllergyManager, PatientAllergy } from './AllergyManager';
 
-// Expanded Kenyan foods allergen database
+// Common food → likely allergens map (used to cross-check user input).
 const allergenDatabase: Record<string, string[]> = {
-  // Western foods
-  'bread': ['wheat', 'gluten', 'milk', 'eggs'],
-  'cake': ['wheat', 'gluten', 'milk', 'eggs', 'soy'],
-  'pasta': ['wheat', 'gluten', 'eggs'],
-  'pizza': ['wheat', 'gluten', 'milk'],
-  'cookies': ['wheat', 'gluten', 'milk', 'eggs', 'nuts'],
-  'chocolate': ['milk', 'soy', 'nuts'],
-  'ice cream': ['milk', 'eggs', 'nuts', 'soy'],
-  'cheese': ['milk'],
-  'yogurt': ['milk'],
-  'butter': ['milk'],
-  'scrambled eggs': ['eggs', 'milk'],
-  'omelette': ['eggs', 'milk'],
-  'mayonnaise': ['eggs'],
-  'salad dressing': ['eggs', 'soy'],
-  'peanut butter': ['peanuts', 'nuts'],
-  'almond milk': ['nuts'],
-  'soy milk': ['soy'],
-  'tofu': ['soy'],
-  'soy sauce': ['soy', 'wheat', 'gluten'],
-  
-  // Kenyan staples
-  'ugali': [],
-  'chapati': ['wheat', 'gluten'],
-  'mandazi': ['wheat', 'gluten', 'eggs', 'milk'],
-  'sukuma wiki': [],
-  'nyama choma': [],
-  'githeri': [],
-  'mukimo': ['milk'],
-  'pilau': [],
-  'samosa': ['wheat', 'gluten'],
-  
-  // Kenyan fish dishes
-  'tilapia': ['fish'],
-  'omena': ['fish'],
-  'fish fry': ['fish', 'wheat', 'gluten'],
-  'samaki wa kukaanga': ['fish', 'wheat'],
-  'fish stew': ['fish'],
-  'dagaa': ['fish'],
-  
-  // Kenyan traditional dishes
-  'matoke': [],
-  'irio': ['milk'],
-  'wali': [],
-  'kachumbari': [],
-  'mchuzi wa nyama': [],
-  'mchuzi wa kuku': [],
-  'mchuzi wa samaki': ['fish'],
-  'bhajia': ['wheat', 'gluten'],
-  'viazi karai': ['wheat', 'gluten'],
-  'maharagwe': [],
-  'dengu': [],
-  'ndengu': [],
-  'mbaazi': [],
-  'kunde': [],
-  'terere': [],
-  'mrenda': [],
-  'managu': [],
-  'kienyeji vegetables': [],
-  
-  // Kenyan snacks
-  'mahamri': ['wheat', 'gluten', 'milk'],
-  'kashata': ['nuts', 'peanuts'],
-  'ndazi': ['wheat', 'gluten', 'eggs'],
-  'kaimati': ['wheat', 'gluten', 'milk'],
-  'vitumbua': ['wheat', 'milk'],
-  'mkate wa sinia': ['wheat', 'gluten', 'eggs', 'milk'],
-  'maandazi': ['wheat', 'gluten', 'eggs', 'milk'],
-  
-  // Kenyan drinks
-  'uji': ['wheat', 'sorghum'],
-  'mursik': ['milk'],
-  'chai': ['milk'],
-  'tangawizi': [],
-  'madafu': [],
-  
-  // Coastal Kenyan dishes
-  'biryani': ['milk', 'nuts'],
-  'pilau ya nyama': [],
-  'wali wa nazi': ['nuts'],
-  'mbaazi za nazi': ['nuts'],
-  'mishkaki': [],
-  'pweza': ['shellfish'],
-  'kamba': ['shellfish'],
-  
-  // Seafood
-  'fish': ['fish', 'shellfish'],
-  'shrimp': ['shellfish'],
-  'crab': ['shellfish'],
-  'lobster': ['shellfish'],
-  'prawns': ['shellfish'],
-  'calamari': ['shellfish'],
-  
-  // Nyama varieties
-  'nyama': [],
-  'kuku': [],
-  'goat meat': [],
-  'beef stew': [],
-  'liver': [],
-  'matumbo': [],
-  'mutura': [],
-};
-
-const allergenIcons: Record<string, React.ElementType> = {
-  'wheat': Wheat,
-  'gluten': Wheat,
-  'milk': Milk,
-  'eggs': Egg,
-  'fish': Fish,
-  'shellfish': Fish,
-  'nuts': Cookie,
-  'peanuts': Cookie,
-  'soy': Apple,
+  bread: ['wheat', 'gluten'], cake: ['wheat', 'gluten', 'milk', 'eggs'], pasta: ['wheat', 'gluten', 'eggs'],
+  pizza: ['wheat', 'gluten', 'milk'], cookies: ['wheat', 'gluten', 'milk', 'eggs', 'nuts'],
+  chocolate: ['milk', 'soy', 'nuts'], 'ice cream': ['milk', 'eggs', 'nuts'], cheese: ['milk'],
+  yogurt: ['milk'], butter: ['milk'], 'scrambled eggs': ['eggs'], omelette: ['eggs'],
+  mayonnaise: ['eggs'], 'peanut butter': ['peanuts', 'nuts'], cashew: ['nuts'], almond: ['nuts'],
+  fish: ['fish'], tilapia: ['fish'], salmon: ['fish'], prawns: ['shellfish'], crab: ['shellfish'],
+  lobster: ['shellfish'], milk: ['milk'], soy: ['soy'], tofu: ['soy'], 'soy sauce': ['soy', 'wheat'],
+  ugali: [], rice: [], chapati: ['wheat', 'gluten'], mandazi: ['wheat', 'gluten', 'milk', 'eggs'],
+  samosa: ['wheat', 'gluten'], githeri: [], beans: [], 'sukuma wiki': [], mango: [], banana: [],
+  pineapple: [], beef: [], chicken: ['eggs'], pork: [], goat: [], 'wheat flour': ['wheat', 'gluten'],
+  honey: [], peanuts: ['peanuts', 'nuts'], walnut: ['nuts'], strawberry: [],
 };
 
 interface AllergyCheckerProps {
-  userAllergies?: string[];
+  userAllergies?: string[]; // legacy fallback (e.g. from demo profile)
 }
 
-export function AllergyChecker({ userAllergies }: AllergyCheckerProps) {
+export function AllergyChecker({ userAllergies: legacy }: AllergyCheckerProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [result, setResult] = useState<{
-    food: string;
-    allergens: string[];
-    dangerous: string[];
-    safe: boolean;
-  } | null>(null);
-  const [isListening, setIsListening] = useState(false);
+  const [savedAllergies, setSavedAllergies] = useState<PatientAllergy[]>([]);
+  const [result, setResult] = useState<{ safe: boolean; warnings: string[]; matched: PatientAllergy[]; food: string } | null>(null);
 
-  // Demo allergies for display
-  const allergies = userAllergies || ['Peanuts'];
+  // Build list of allergens to check against (user's saved DB list, lowercased)
+  const myAllergenTerms = savedAllergies.length
+    ? savedAllergies.map((a) => a.allergen.toLowerCase())
+    : (legacy || []).map((a) => a.toLowerCase());
 
   const checkFood = (food: string) => {
-    const normalizedFood = food.toLowerCase().trim();
-    const foodAllergens = allergenDatabase[normalizedFood] || [];
-    
-    const dangerous = foodAllergens.filter(allergen => 
-      allergies.some(a => 
-        a.toLowerCase().includes(allergen) || 
-        allergen.includes(a.toLowerCase())
-      )
-    );
-
+    const f = food.trim().toLowerCase();
+    if (!f) return;
+    const knownAllergens = allergenDatabase[f] || [];
+    // Match: direct allergen-name match OR shared allergen group
+    const matched = savedAllergies.filter((a) => {
+      const t = a.allergen.toLowerCase();
+      return f.includes(t) || t.includes(f) || knownAllergens.some((k) => t.includes(k) || k.includes(t));
+    });
+    const legacyHits = legacy?.filter((a) => {
+      const t = a.toLowerCase();
+      return f.includes(t) || t.includes(f) || knownAllergens.some((k) => t.includes(k) || k.includes(t));
+    }) || [];
+    const warnings = [
+      ...matched.map((m) => `${m.allergen} (${m.severity})`),
+      ...legacyHits,
+    ];
     setResult({
-      food: normalizedFood,
-      allergens: foodAllergens,
-      dangerous,
-      safe: dangerous.length === 0,
+      safe: warnings.length === 0,
+      warnings,
+      matched,
+      food: f,
     });
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchTerm.trim()) {
-      checkFood(searchTerm);
-    }
-  };
-
-  const handleVoiceInput = () => {
-    setIsListening(true);
-    // Demo: Simulate voice recognition
-    setTimeout(() => {
-      setSearchTerm('bread');
-      checkFood('bread');
-      setIsListening(false);
-    }, 2000);
-  };
-
   const speakResult = () => {
-    if (!result) return;
-    
-    const message = result.safe 
-      ? `${result.food} is safe for you to eat.`
-      : `Warning! ${result.food} contains ${result.dangerous.join(' and ')}, which you are allergic to. Do not eat this food.`;
-    
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(message);
-      utterance.lang = 'en-US';
-      speechSynthesis.speak(utterance);
-    }
+    if (!result || typeof window === 'undefined' || !window.speechSynthesis) return;
+    const msg = result.safe
+      ? `${result.food} appears safe based on your saved allergies.`
+      : `Warning: ${result.food} may contain ${result.warnings.join(', ')}. Avoid this food.`;
+    const u = new SpeechSynthesisUtterance(msg);
+    window.speechSynthesis.speak(u);
   };
 
   return (
-    <Card className="border-0 shadow-elegant">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-warning" />
-          Allergy Checker
-        </CardTitle>
-        <CardDescription>
-          Check if a food is safe based on your allergies
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* User's Allergies */}
-        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-          <p className="text-sm font-medium mb-2">Your Allergies:</p>
-          <div className="flex flex-wrap gap-2">
-            {allergies.map((allergy) => (
-              <Badge key={allergy} variant="destructive">
-                {allergy}
-              </Badge>
-            ))}
-          </div>
-        </div>
+    <div className="space-y-6">
+      <AllergyManager onChange={setSavedAllergies} />
 
-        {/* Search Form */}
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Type food name (e.g., bread, cookies)"
-              className="pl-10"
-            />
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={handleVoiceInput}
-            className={isListening ? 'animate-pulse bg-destructive/10' : ''}
-          >
-            <Mic className={`w-4 h-4 ${isListening ? 'text-destructive' : ''}`} />
-          </Button>
-          <Button type="submit">Check</Button>
-        </form>
+      <Card className="border-0 shadow-elegant">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Search className="w-5 h-5" /> Food Safety Check</CardTitle>
+          <CardDescription>
+            Type a food name to see if it might trigger any of your saved allergies.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={(e) => { e.preventDefault(); checkFood(searchTerm); }} className="flex gap-2">
+            <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="e.g. chapati, fish, peanut butter" maxLength={60} />
+            <Button type="submit"><Search className="w-4 h-4" /></Button>
+          </form>
 
-        {/* Voice Listening Indicator */}
-        {isListening && (
-          <div className="p-3 rounded-lg bg-primary/10 text-center animate-pulse">
-            <Mic className="w-6 h-6 mx-auto mb-2 text-primary" />
-            <p className="text-sm font-medium">Listening... Say the food name</p>
-          </div>
-        )}
+          {myAllergenTerms.length === 0 && (
+            <p className="text-sm text-muted-foreground italic">
+              Add at least one allergy above for the checker to give you a meaningful result.
+            </p>
+          )}
 
-        {/* Result */}
-        {result && (
-          <div className="space-y-3 animate-slide-up">
-            <Alert className={result.safe ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-destructive bg-destructive/10'}>
-              <div className="flex items-start gap-3">
+          {result && (
+            <Alert className={result.safe ? 'border-success/40 bg-success/5' : 'border-destructive/40 bg-destructive/5'}>
+              {result.safe ? <CheckCircle2 className="w-4 h-4 text-success" /> : <AlertTriangle className="w-4 h-4 text-destructive" />}
+              <AlertTitle className="capitalize">
+                {result.safe ? `${result.food} looks safe for you` : `Warning: ${result.food}`}
+              </AlertTitle>
+              <AlertDescription className="space-y-2">
                 {result.safe ? (
-                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                  <p>No matches against your saved allergy profile. Always double-check ingredient labels.</p>
                 ) : (
-                  <XCircle className="w-6 h-6 text-destructive" />
+                  <>
+                    <p>This food may contain or be related to allergens you reported:</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {result.warnings.map((w, i) => (
+                        <Badge key={i} variant="destructive" className="text-xs">{w}</Badge>
+                      ))}
+                    </div>
+                  </>
                 )}
-                <div className="flex-1">
-                  <AlertTitle className="text-lg capitalize">{result.food}</AlertTitle>
-                  <AlertDescription>
-                    {result.safe ? (
-                      <span className="text-green-700 dark:text-green-400">
-                        ✓ Safe to eat! No allergens detected for your profile.
-                      </span>
-                    ) : (
-                      <span className="text-destructive font-semibold">
-                        ⚠️ WARNING: Contains {result.dangerous.join(', ')}!
-                      </span>
-                    )}
-                  </AlertDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={speakResult}
-                  className="shrink-0"
-                >
-                  <Volume2 className="w-5 h-5" />
+                <Button size="sm" variant="ghost" onClick={speakResult} className="mt-2">
+                  <Volume2 className="w-3 h-3 mr-1" /> Read aloud
                 </Button>
-              </div>
+              </AlertDescription>
             </Alert>
-
-            {/* Allergens in food */}
-            {result.allergens.length > 0 && (
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-sm font-medium mb-2">Allergens in this food:</p>
-                <div className="flex flex-wrap gap-2">
-                  {result.allergens.map((allergen) => {
-                    const Icon = allergenIcons[allergen] || Apple;
-                    const isDangerous = result.dangerous.includes(allergen);
-                    return (
-                      <Badge 
-                        key={allergen} 
-                        variant={isDangerous ? 'destructive' : 'secondary'}
-                        className="flex items-center gap-1"
-                      >
-                        <Icon className="w-3 h-3" />
-                        {allergen}
-                      </Badge>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Quick Check Buttons */}
-        <div className="pt-2">
-          <p className="text-sm text-muted-foreground mb-2">Quick check Kenyan foods:</p>
-          <div className="flex flex-wrap gap-2">
-            {['Ugali', 'Tilapia', 'Omena', 'Matoke', 'Mandazi', 'Chapati', 'Pilau', 'Nyama Choma'].map((food) => (
-              <Button
-                key={food}
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearchTerm(food);
-                  checkFood(food);
-                }}
-              >
-                {food}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
