@@ -393,7 +393,7 @@ export function FloatingAIAssistant() {
             </div>
             <div>
               <CardTitle className="text-sm flex items-center gap-1">
-                Health AI <Sparkles className="w-3 h-3" />
+                EMEC Assistant <Sparkles className="w-3 h-3" />
               </CardTitle>
               <p className="text-xs text-primary-foreground/80">
                 {selectedAgeCategory === 'child' || selectedAgeCategory === 'infant'
