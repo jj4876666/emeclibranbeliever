@@ -163,6 +163,7 @@ export type Database = {
       donations: {
         Row: {
           amount: number
+          charity_name: string | null
           created_at: string
           currency: string | null
           donor_id: string | null
@@ -170,10 +171,15 @@ export type Database = {
           id: string
           is_public: boolean | null
           message: string | null
+          mpesa_checkout_request_id: string | null
+          mpesa_receipt_number: string | null
           payment_method: string
+          phone_number: string | null
+          status: string
         }
         Insert: {
           amount: number
+          charity_name?: string | null
           created_at?: string
           currency?: string | null
           donor_id?: string | null
@@ -181,10 +187,15 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           message?: string | null
+          mpesa_checkout_request_id?: string | null
+          mpesa_receipt_number?: string | null
           payment_method: string
+          phone_number?: string | null
+          status?: string
         }
         Update: {
           amount?: number
+          charity_name?: string | null
           created_at?: string
           currency?: string | null
           donor_id?: string | null
@@ -192,7 +203,11 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           message?: string | null
+          mpesa_checkout_request_id?: string | null
+          mpesa_receipt_number?: string | null
           payment_method?: string
+          phone_number?: string | null
+          status?: string
         }
         Relationships: [
           {
