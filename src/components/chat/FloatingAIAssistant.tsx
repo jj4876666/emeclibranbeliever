@@ -362,7 +362,7 @@ export function FloatingAIAssistant() {
       <Button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-24 right-4 w-14 h-14 rounded-full shadow-lg z-40 bg-gradient-to-br from-primary to-primary/80 hover:scale-110 transition-transform"
-        aria-label="Open AI Health Assistant"
+        aria-label="Open EMEC Assistant"
       >
         <MessageCircle className="w-6 h-6" />
       </Button>
@@ -393,7 +393,7 @@ export function FloatingAIAssistant() {
             </div>
             <div>
               <CardTitle className="text-sm flex items-center gap-1">
-                Health AI <Sparkles className="w-3 h-3" />
+                EMEC Assistant <Sparkles className="w-3 h-3" />
               </CardTitle>
               <p className="text-xs text-primary-foreground/80">
                 {selectedAgeCategory === 'child' || selectedAgeCategory === 'infant'

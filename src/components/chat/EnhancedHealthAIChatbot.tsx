@@ -195,10 +195,10 @@ export function EnhancedHealthAIChatbot({ userAge }: EnhancedHealthAIChatbotProp
             </div>
             <div>
               <CardTitle className="text-lg flex items-center gap-2">
-                Health AI Assistant
+                EMEC Assistant
                 <Sparkles className="w-4 h-4 text-amber-500" />
               </CardTitle>
-              <CardDescription>Ask me anything about health</CardDescription>
+              <CardDescription>Your health-only AI companion</CardDescription>
             </div>
           </div>
           <Badge variant="secondary" className="bg-amber-100 text-amber-800">
@@ -216,7 +216,7 @@ export function EnhancedHealthAIChatbot({ userAge }: EnhancedHealthAIChatbotProp
               <div className="text-center py-8">
                 <Stethoscope className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground mb-4">
-                  Hello! I'm your AI Health Assistant. How can I help you today?
+                  Hello! I'm the EMEC Assistant — I only help with health topics. How can I support your wellbeing today?
                 </p>
               </div>
 

@@ -23,8 +23,8 @@ interface EmbeddedAIChatProps {
 }
 
 export function EmbeddedAIChat({
-  title = 'AI Health Assistant',
-  placeholder = 'Ask me anything about health...',
+  title = 'EMEC Assistant',
+  placeholder = 'Ask me anything about your health...',
   showHeader = true,
   maxHeight = '400px',
   onClose,
