@@ -175,16 +175,32 @@ export function KenyaFacilityMap({
 
   return (
     <div className="space-y-4">
-      <Card className="overflow-hidden border-2">
-        <div className="flex flex-col gap-2 p-3 bg-card border-b sm:flex-row sm:items-center sm:justify-between">
+      <Card className="overflow-hidden border-2 border-primary/20 shadow-lg rounded-2xl bg-gradient-to-br from-card to-card/60 backdrop-blur">
+        <div className="flex flex-col gap-3 p-3 bg-gradient-to-r from-primary/5 via-background to-accent/5 border-b sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 flex-wrap">
-            <MapPin className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Kenya Health Facilities</span>
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+              <MapPin className="w-4 h-4 text-primary" />
+            </div>
+            <span className="text-sm font-semibold tracking-tight">Kenya Health Map</span>
             <Badge variant="secondary" className="text-xs">
-              {facilities.length} of {demoFacilities.length} · 47 counties
+              {facilities.length}/{demoFacilities.length} facilities · 47 counties
+            </Badge>
+            <Badge variant="outline" className="text-xs gap-1">
+              <Activity className="w-3 h-3" /> {visibleZones.length} disease zones
             </Badge>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <Select value={diseaseFilter} onValueChange={setDiseaseFilter}>
+              <SelectTrigger className="h-8 w-[150px] text-xs">
+                <SelectValue placeholder="Disease" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All diseases</SelectItem>
+                {DISEASES.map((d) => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
               <SelectTrigger className="h-8 w-[130px] text-xs">
                 <SelectValue placeholder="All types" />
@@ -207,6 +223,15 @@ export function KenyaFacilityMap({
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              size="sm"
+              variant={showZones ? 'default' : 'outline'}
+              onClick={() => setShowZones((v) => !v)}
+              className="h-8"
+            >
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              {showZones ? 'Zones on' : 'Zones off'}
+            </Button>
             <Button size="sm" variant="outline" onClick={requestLocation} disabled={locating}>
               <Navigation className="w-3 h-3 mr-1" />
               {locating ? 'Locating…' : 'My Location'}
