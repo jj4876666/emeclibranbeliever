@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, useMap, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, useMap, LayersControl, Circle, LayerGroup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Hospital, Stethoscope, Building2, Navigation, Phone, MapPin, ShieldCheck, Layers, Route } from 'lucide-react';
+import { Hospital, Stethoscope, Building2, Navigation, Phone, MapPin, ShieldCheck, Layers, Route, Activity, AlertTriangle } from 'lucide-react';
 import { demoFacilities, withDistances, KENYA_COUNTIES } from '@/data/healthFacilities';
 import { HealthFacility } from '@/types/emec';
+import { DISEASE_ZONES, DISEASES, severityColor, severityLabel, ZoneSeverity } from '@/data/diseaseZones';
 
 // Fix Leaflet default marker icons
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
@@ -99,6 +100,13 @@ export function KenyaFacilityMap({
   );
 
   const [typeFilter, setTypeFilter] = useState<'all' | 'hospital' | 'clinic' | 'dispensary'>('all');
+  const [showZones, setShowZones] = useState(true);
+  const [diseaseFilter, setDiseaseFilter] = useState<string>('all');
+
+  const visibleZones = useMemo(
+    () => (diseaseFilter === 'all' ? DISEASE_ZONES : DISEASE_ZONES.filter((z) => z.disease === diseaseFilter)),
+    [diseaseFilter]
+  );
 
   const facilities = useMemo(() => {
     let list = allFacilities;
@@ -167,16 +175,32 @@ export function KenyaFacilityMap({
 
   return (
     <div className="space-y-4">
-      <Card className="overflow-hidden border-2">
-        <div className="flex flex-col gap-2 p-3 bg-card border-b sm:flex-row sm:items-center sm:justify-between">
+      <Card className="overflow-hidden border-2 border-primary/20 shadow-lg rounded-2xl bg-gradient-to-br from-card to-card/60 backdrop-blur">
+        <div className="flex flex-col gap-3 p-3 bg-gradient-to-r from-primary/5 via-background to-accent/5 border-b sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 flex-wrap">
-            <MapPin className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Kenya Health Facilities</span>
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+              <MapPin className="w-4 h-4 text-primary" />
+            </div>
+            <span className="text-sm font-semibold tracking-tight">Kenya Health Map</span>
             <Badge variant="secondary" className="text-xs">
-              {facilities.length} of {demoFacilities.length} · 47 counties
+              {facilities.length}/{demoFacilities.length} facilities · 47 counties
+            </Badge>
+            <Badge variant="outline" className="text-xs gap-1">
+              <Activity className="w-3 h-3" /> {visibleZones.length} disease zones
             </Badge>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <Select value={diseaseFilter} onValueChange={setDiseaseFilter}>
+              <SelectTrigger className="h-8 w-[150px] text-xs">
+                <SelectValue placeholder="Disease" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All diseases</SelectItem>
+                {DISEASES.map((d) => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
               <SelectTrigger className="h-8 w-[130px] text-xs">
                 <SelectValue placeholder="All types" />
@@ -199,6 +223,15 @@ export function KenyaFacilityMap({
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              size="sm"
+              variant={showZones ? 'default' : 'outline'}
+              onClick={() => setShowZones((v) => !v)}
+              className="h-8"
+            >
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              {showZones ? 'Zones on' : 'Zones off'}
+            </Button>
             <Button size="sm" variant="outline" onClick={requestLocation} disabled={locating}>
               <Navigation className="w-3 h-3 mr-1" />
               {locating ? 'Locating…' : 'My Location'}
@@ -285,9 +318,69 @@ export function KenyaFacilityMap({
               />
             )}
 
+            {showZones && (
+              <LayerGroup>
+                {visibleZones.map((z) => {
+                  const color = severityColor(z.severity);
+                  return (
+                    <Circle
+                      key={z.id}
+                      center={z.center}
+                      radius={z.radiusKm * 1000}
+                      pathOptions={{
+                        color,
+                        weight: 1.5,
+                        fillColor: color,
+                        fillOpacity: z.severity === 'high' ? 0.28 : z.severity === 'moderate' ? 0.18 : 0.12,
+                      }}
+                    >
+                      <Tooltip direction="top" sticky opacity={0.95}>
+                        <span className="text-xs font-semibold">{z.disease}</span>
+                        <span className="text-[10px] block opacity-80">{z.county} · {severityLabel(z.severity)}</span>
+                      </Tooltip>
+                      <Popup>
+                        <div className="space-y-1 min-w-[200px]">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="inline-block w-3 h-3 rounded-full"
+                              style={{ background: color }}
+                            />
+                            <span className="font-semibold text-sm">{z.disease}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">{z.county} County</div>
+                          <div className="text-xs"><strong>Status:</strong> {severityLabel(z.severity)}</div>
+                          {z.cases && <div className="text-xs"><strong>Burden:</strong> {z.cases}</div>}
+                          <div className="text-xs">{z.notes}</div>
+                          <div className="text-[10px] text-muted-foreground pt-1 border-t mt-1">
+                            Source: {z.source} · Updated {z.lastUpdated}
+                          </div>
+                        </div>
+                      </Popup>
+                    </Circle>
+                  );
+                })}
+              </LayerGroup>
+            )}
+
             <FlyTo target={flyTarget} zoom={countyFilter !== 'all' && !selected ? 9 : 11} />
           </MapContainer>
         </div>
+        {showZones && (
+          <div className="flex flex-wrap items-center gap-3 px-3 py-2 border-t bg-muted/30 text-xs">
+            <span className="font-medium flex items-center gap-1">
+              <Activity className="w-3 h-3" /> Prevalence legend:
+            </span>
+            {(['high','moderate','monitoring'] as ZoneSeverity[]).map((s) => (
+              <span key={s} className="inline-flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full border" style={{ background: severityColor(s), borderColor: severityColor(s) }} />
+                <span className="capitalize text-muted-foreground">{severityLabel(s)}</span>
+              </span>
+            ))}
+            <span className="ml-auto text-[10px] text-muted-foreground">
+              Data: WHO AFRO & Kenya MOH situation reports · Educational only
+            </span>
+          </div>
+        )}
       </Card>
 
       {selected && (
