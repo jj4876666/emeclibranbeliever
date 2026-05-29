@@ -100,6 +100,13 @@ export function KenyaFacilityMap({
   );
 
   const [typeFilter, setTypeFilter] = useState<'all' | 'hospital' | 'clinic' | 'dispensary'>('all');
+  const [showZones, setShowZones] = useState(true);
+  const [diseaseFilter, setDiseaseFilter] = useState<string>('all');
+
+  const visibleZones = useMemo(
+    () => (diseaseFilter === 'all' ? DISEASE_ZONES : DISEASE_ZONES.filter((z) => z.disease === diseaseFilter)),
+    [diseaseFilter]
+  );
 
   const facilities = useMemo(() => {
     let list = allFacilities;
