@@ -6,7 +6,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Hospital, Stethoscope, Building2, Navigation, Phone, MapPin, ShieldCheck, Layers, Route, Activity, AlertTriangle } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Hospital, Stethoscope, Building2, Navigation, Phone, MapPin, ShieldCheck, Layers, Route, Activity, AlertTriangle, X } from 'lucide-react';
 import { demoFacilities, withDistances, KENYA_COUNTIES } from '@/data/healthFacilities';
 import { HealthFacility } from '@/types/emec';
 import { DISEASE_ZONES, DISEASES, severityColor, severityLabel, ZoneSeverity } from '@/data/diseaseZones';
@@ -99,21 +100,40 @@ export function KenyaFacilityMap({
     [userLocation]
   );
 
-  const [typeFilter, setTypeFilter] = useState<'all' | 'hospital' | 'clinic' | 'dispensary'>('all');
+  type FacilityType = 'hospital' | 'clinic' | 'dispensary';
+  const ALL_TYPES: FacilityType[] = ['hospital', 'clinic', 'dispensary'];
+  const ALL_SEVERITIES: ZoneSeverity[] = ['high', 'moderate', 'monitoring'];
+
+  const [activeTypes, setActiveTypes] = useState<FacilityType[]>(ALL_TYPES);
+  const [activeSeverities, setActiveSeverities] = useState<ZoneSeverity[]>(ALL_SEVERITIES);
   const [showZones, setShowZones] = useState(true);
   const [diseaseFilter, setDiseaseFilter] = useState<string>('all');
 
-  const visibleZones = useMemo(
-    () => (diseaseFilter === 'all' ? DISEASE_ZONES : DISEASE_ZONES.filter((z) => z.disease === diseaseFilter)),
-    [diseaseFilter]
-  );
+  const visibleZones = useMemo(() => {
+    let list = DISEASE_ZONES;
+    if (diseaseFilter !== 'all') list = list.filter((z) => z.disease === diseaseFilter);
+    if (countyFilter !== 'all') list = list.filter((z) => z.county === countyFilter);
+    list = list.filter((z) => activeSeverities.includes(z.severity));
+    return list;
+  }, [diseaseFilter, countyFilter, activeSeverities]);
 
   const facilities = useMemo(() => {
     let list = allFacilities;
     if (countyFilter !== 'all') list = list.filter((f) => f.county === countyFilter);
-    if (typeFilter !== 'all') list = list.filter((f) => f.type === typeFilter);
+    list = list.filter((f) => activeTypes.includes(f.type));
     return list;
-  }, [allFacilities, countyFilter, typeFilter]);
+  }, [allFacilities, countyFilter, activeTypes]);
+
+  const typeCounts = useMemo(() => {
+    const base = countyFilter === 'all' ? allFacilities : allFacilities.filter((f) => f.county === countyFilter);
+    return {
+      hospital: base.filter((f) => f.type === 'hospital').length,
+      clinic: base.filter((f) => f.type === 'clinic').length,
+      dispensary: base.filter((f) => f.type === 'dispensary').length,
+    };
+  }, [allFacilities, countyFilter]);
+
+  const countyCenter = countyFilter !== 'all' ? COUNTY_CENTROIDS[countyFilter] : null;
 
   const requestLocation = () => {
     if (!navigator.geolocation) return;
@@ -176,66 +196,144 @@ export function KenyaFacilityMap({
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden border-2 border-primary/20 shadow-lg rounded-2xl bg-gradient-to-br from-card to-card/60 backdrop-blur">
-        <div className="flex flex-col gap-3 p-3 bg-gradient-to-r from-primary/5 via-background to-accent/5 border-b sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <MapPin className="w-4 h-4 text-primary" />
+        <div className="flex flex-col gap-3 p-3 bg-gradient-to-r from-primary/5 via-background to-accent/5 border-b">
+          {/* Title row */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <MapPin className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-sm font-semibold tracking-tight">Kenya Health Map</span>
+              <Badge variant="secondary" className="text-xs">
+                {facilities.length}/{demoFacilities.length} facilities
+              </Badge>
+              <Badge variant="outline" className="text-xs gap-1">
+                <Activity className="w-3 h-3" /> {visibleZones.length} zones
+              </Badge>
+              {countyFilter !== 'all' && (
+                <Badge className="text-xs gap-1 bg-primary/10 text-primary border-primary/30 border">
+                  <MapPin className="w-3 h-3" /> {countyFilter}
+                  <button
+                    onClick={() => handleCountyChange('all')}
+                    className="ml-1 hover:opacity-70"
+                    aria-label="Clear county"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              )}
             </div>
-            <span className="text-sm font-semibold tracking-tight">Kenya Health Map</span>
-            <Badge variant="secondary" className="text-xs">
-              {facilities.length}/{demoFacilities.length} facilities · 47 counties
-            </Badge>
-            <Badge variant="outline" className="text-xs gap-1">
-              <Activity className="w-3 h-3" /> {visibleZones.length} disease zones
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Select value={diseaseFilter} onValueChange={setDiseaseFilter}>
-              <SelectTrigger className="h-8 w-[150px] text-xs">
-                <SelectValue placeholder="Disease" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All diseases</SelectItem>
-                {DISEASES.map((d) => (
-                  <SelectItem key={d} value={d}>{d}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
-              <SelectTrigger className="h-8 w-[130px] text-xs">
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="hospital">Hospitals</SelectItem>
-                <SelectItem value="clinic">Clinics</SelectItem>
-                <SelectItem value="dispensary">Dispensaries</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={countyFilter} onValueChange={handleCountyChange}>
-              <SelectTrigger className="h-8 w-[160px] text-xs">
-                <SelectValue placeholder="Filter by county" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                <SelectItem value="all">All counties</SelectItem>
-                {KENYA_COUNTIES.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              variant={showZones ? 'default' : 'outline'}
-              onClick={() => setShowZones((v) => !v)}
-              className="h-8"
-            >
-              <AlertTriangle className="w-3 h-3 mr-1" />
-              {showZones ? 'Zones on' : 'Zones off'}
-            </Button>
-            <Button size="sm" variant="outline" onClick={requestLocation} disabled={locating}>
+            <Button size="sm" variant="outline" onClick={requestLocation} disabled={locating} className="h-8">
               <Navigation className="w-3 h-3 mr-1" />
               {locating ? 'Locating…' : 'My Location'}
             </Button>
+          </div>
+
+          {/* Layer toggles row */}
+          <div className="grid gap-3 lg:grid-cols-3">
+            {/* Facility types */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <Layers className="w-3 h-3" /> Facility types
+              </div>
+              <ToggleGroup
+                type="multiple"
+                value={activeTypes}
+                onValueChange={(v) => setActiveTypes(v.length ? (v as FacilityType[]) : ALL_TYPES)}
+                className="justify-start flex-wrap gap-1.5"
+              >
+                <ToggleGroupItem value="hospital" size="sm" variant="outline" className="h-8 gap-1.5 data-[state=on]:bg-red-500/10 data-[state=on]:border-red-500/40 data-[state=on]:text-red-600 dark:data-[state=on]:text-red-400">
+                  <span className="w-2 h-2 rounded-full" style={{ background: 'hsl(0 84% 55%)' }} />
+                  <Hospital className="w-3 h-3" /> Hospitals
+                  <span className="text-[10px] opacity-70">({typeCounts.hospital})</span>
+                </ToggleGroupItem>
+                <ToggleGroupItem value="clinic" size="sm" variant="outline" className="h-8 gap-1.5 data-[state=on]:bg-blue-500/10 data-[state=on]:border-blue-500/40 data-[state=on]:text-blue-600 dark:data-[state=on]:text-blue-400">
+                  <span className="w-2 h-2 rounded-full" style={{ background: 'hsl(217 91% 55%)' }} />
+                  <Stethoscope className="w-3 h-3" /> Clinics
+                  <span className="text-[10px] opacity-70">({typeCounts.clinic})</span>
+                </ToggleGroupItem>
+                <ToggleGroupItem value="dispensary" size="sm" variant="outline" className="h-8 gap-1.5 data-[state=on]:bg-emerald-500/10 data-[state=on]:border-emerald-500/40 data-[state=on]:text-emerald-600 dark:data-[state=on]:text-emerald-400">
+                  <span className="w-2 h-2 rounded-full" style={{ background: 'hsl(142 71% 40%)' }} />
+                  <Building2 className="w-3 h-3" /> Dispensaries
+                  <span className="text-[10px] opacity-70">({typeCounts.dispensary})</span>
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            {/* Disease severity */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <AlertTriangle className="w-3 h-3" /> Disease zones
+                </div>
+                <button
+                  onClick={() => setShowZones((v) => !v)}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                    showZones
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
+                  }`}
+                >
+                  {showZones ? 'Visible' : 'Hidden'}
+                </button>
+              </div>
+              <ToggleGroup
+                type="multiple"
+                value={activeSeverities}
+                onValueChange={(v) => setActiveSeverities(v.length ? (v as ZoneSeverity[]) : ALL_SEVERITIES)}
+                className="justify-start flex-wrap gap-1.5"
+                disabled={!showZones}
+              >
+                {ALL_SEVERITIES.map((s) => (
+                  <ToggleGroupItem
+                    key={s}
+                    value={s}
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 capitalize disabled:opacity-40"
+                    style={
+                      activeSeverities.includes(s) && showZones
+                        ? { borderColor: severityColor(s), color: severityColor(s), background: `${severityColor(s).replace(')', ' / 0.08)')}` }
+                        : undefined
+                    }
+                  >
+                    <span className="w-2 h-2 rounded-full" style={{ background: severityColor(s) }} />
+                    {s === 'monitoring' ? 'Surveillance' : s}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </div>
+
+            {/* County + disease selects */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <MapPin className="w-3 h-3" /> Filter region
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                <Select value={countyFilter} onValueChange={handleCountyChange}>
+                  <SelectTrigger className="h-8 w-[150px] text-xs">
+                    <SelectValue placeholder="County" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    <SelectItem value="all">All 47 counties</SelectItem>
+                    {KENYA_COUNTIES.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={diseaseFilter} onValueChange={setDiseaseFilter}>
+                  <SelectTrigger className="h-8 w-[140px] text-xs">
+                    <SelectValue placeholder="Disease" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All diseases</SelectItem>
+                    {DISEASES.map((d) => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </div>
         <div style={{ height }}>
@@ -286,6 +384,20 @@ export function KenyaFacilityMap({
                   pathOptions={{ color: 'hsl(217 91% 60%)', fillOpacity: 0.1 }}
                 />
               </>
+            )}
+
+            {countyCenter && (
+              <Circle
+                center={countyCenter}
+                radius={45000}
+                pathOptions={{
+                  color: 'hsl(var(--primary))',
+                  weight: 2,
+                  dashArray: '6 6',
+                  fillColor: 'hsl(var(--primary))',
+                  fillOpacity: 0.04,
+                }}
+              />
             )}
 
             {showFacilities &&
