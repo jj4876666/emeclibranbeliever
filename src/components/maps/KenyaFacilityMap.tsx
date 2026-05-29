@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, useMap, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, useMap, LayersControl, Circle, LayerGroup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Hospital, Stethoscope, Building2, Navigation, Phone, MapPin, ShieldCheck, Layers, Route } from 'lucide-react';
+import { Hospital, Stethoscope, Building2, Navigation, Phone, MapPin, ShieldCheck, Layers, Route, Activity, AlertTriangle } from 'lucide-react';
 import { demoFacilities, withDistances, KENYA_COUNTIES } from '@/data/healthFacilities';
 import { HealthFacility } from '@/types/emec';
+import { DISEASE_ZONES, DISEASES, severityColor, severityLabel, ZoneSeverity } from '@/data/diseaseZones';
 
 // Fix Leaflet default marker icons
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
