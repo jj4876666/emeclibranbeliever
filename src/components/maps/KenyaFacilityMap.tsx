@@ -318,9 +318,69 @@ export function KenyaFacilityMap({
               />
             )}
 
+            {showZones && (
+              <LayerGroup>
+                {visibleZones.map((z) => {
+                  const color = severityColor(z.severity);
+                  return (
+                    <Circle
+                      key={z.id}
+                      center={z.center}
+                      radius={z.radiusKm * 1000}
+                      pathOptions={{
+                        color,
+                        weight: 1.5,
+                        fillColor: color,
+                        fillOpacity: z.severity === 'high' ? 0.28 : z.severity === 'moderate' ? 0.18 : 0.12,
+                      }}
+                    >
+                      <Tooltip direction="top" sticky opacity={0.95}>
+                        <span className="text-xs font-semibold">{z.disease}</span>
+                        <span className="text-[10px] block opacity-80">{z.county} · {severityLabel(z.severity)}</span>
+                      </Tooltip>
+                      <Popup>
+                        <div className="space-y-1 min-w-[200px]">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="inline-block w-3 h-3 rounded-full"
+                              style={{ background: color }}
+                            />
+                            <span className="font-semibold text-sm">{z.disease}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">{z.county} County</div>
+                          <div className="text-xs"><strong>Status:</strong> {severityLabel(z.severity)}</div>
+                          {z.cases && <div className="text-xs"><strong>Burden:</strong> {z.cases}</div>}
+                          <div className="text-xs">{z.notes}</div>
+                          <div className="text-[10px] text-muted-foreground pt-1 border-t mt-1">
+                            Source: {z.source} · Updated {z.lastUpdated}
+                          </div>
+                        </div>
+                      </Popup>
+                    </Circle>
+                  );
+                })}
+              </LayerGroup>
+            )}
+
             <FlyTo target={flyTarget} zoom={countyFilter !== 'all' && !selected ? 9 : 11} />
           </MapContainer>
         </div>
+        {showZones && (
+          <div className="flex flex-wrap items-center gap-3 px-3 py-2 border-t bg-muted/30 text-xs">
+            <span className="font-medium flex items-center gap-1">
+              <Activity className="w-3 h-3" /> Prevalence legend:
+            </span>
+            {(['high','moderate','monitoring'] as ZoneSeverity[]).map((s) => (
+              <span key={s} className="inline-flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full border" style={{ background: severityColor(s), borderColor: severityColor(s) }} />
+                <span className="capitalize text-muted-foreground">{severityLabel(s)}</span>
+              </span>
+            ))}
+            <span className="ml-auto text-[10px] text-muted-foreground">
+              Data: WHO AFRO & Kenya MOH situation reports · Educational only
+            </span>
+          </div>
+        )}
       </Card>
 
       {selected && (
