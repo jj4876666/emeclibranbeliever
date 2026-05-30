@@ -57,7 +57,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profile) return profile as unknown as SupabaseProfile;
       await new Promise(resolve => setTimeout(resolve, 200 + (i * 300)));
     }
-    return null;
+    // Safety net: orphaned auth user (created before handle_new_user trigger existed,
+    // or trigger temporarily failed). Bootstrap a minimal profile so the patient can
+    // reach their dashboard and see medical updates.
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const u = sessionData?.session?.user;
+      if (!u || u.id !== userId) return null;
+      const meta = (u.user_metadata || {}) as Record<string, unknown>;
+      const accountType = (meta.account_type as string) || 'adult';
+      await supabase.from('profiles').insert({
+        user_id: userId,
+        full_name: (meta.full_name as string) || u.email || 'New User',
+        emec_id: generateEmecId(),
+        account_type: accountType,
+        date_of_birth: (meta.date_of_birth as string) || null,
+        blood_group: (meta.blood_group as string) || null,
+        gender: (meta.gender as string) || null,
+        phone: (meta.phone as string) || null,
+        emergency_contact: (meta.emergency_contact as object) || null,
+      });
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      return (profile as unknown as SupabaseProfile) || null;
+    } catch {
+      return null;
+    }
   };
 
   const buildLiveUser = (session: SupabaseSession, profile: SupabaseProfile): User => {
