@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!u || u.id !== userId) return null;
       const meta = (u.user_metadata || {}) as Record<string, unknown>;
       const accountType = (meta.account_type as string) || 'adult';
-      await supabase.from('profiles').insert({
+      await supabase.from('profiles').insert([{
         user_id: userId,
         full_name: (meta.full_name as string) || u.email || 'New User',
         emec_id: generateEmecId(),
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         gender: (meta.gender as string) || null,
         phone: (meta.phone as string) || null,
         emergency_contact: (meta.emergency_contact as object) || null,
-      });
+      }]);
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
