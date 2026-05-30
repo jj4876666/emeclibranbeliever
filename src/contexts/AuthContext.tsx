@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         blood_group: (meta.blood_group as string) || null,
         gender: (meta.gender as string) || null,
         phone: (meta.phone as string) || null,
-        emergency_contact: (meta.emergency_contact as object) || null,
+        emergency_contact: (meta.emergency_contact as Record<string, string>) || null,
       }]);
       const { data: profile } = await supabase
         .from('profiles')
