@@ -86,6 +86,14 @@ export function ProductionSignupForm({ onBack }: { onBack: () => void }) {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [traceId, setTraceId] = useState<string>('');
+
+  const newTraceId = () => {
+    const bytes = new Uint8Array(6);
+    crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `sgn_${Date.now().toString(36)}_${hex}`;
+  };
 
   const validateAndSubmit = async () => {
     setError('');
@@ -153,20 +161,22 @@ export function ProductionSignupForm({ onBack }: { onBack: () => void }) {
   };
 
   const signUp = async (email: string, password: string, metadata: Record<string, string>) => {
+    const trace = newTraceId();
+    setTraceId(trace);
     setIsLoading(true);
     setError('');
     sessionStorage.setItem('signup_in_progress', 'true');
-    console.log('[SIGNUP] starting', { email, account_type: metadata.account_type });
+    console.log(`[SIGNUP ${trace}] starting`, { email, account_type: metadata.account_type });
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: metadata,
+          data: { ...metadata, signup_trace_id: trace },
           emailRedirectTo: window.location.origin,
         },
       });
-      console.log('[SIGNUP] auth.signUp resolved', { hasUser: !!data?.user, error: signUpError?.message });
+      console.log(`[SIGNUP ${trace}] auth.signUp resolved`, { hasUser: !!data?.user, userId: data?.user?.id, error: signUpError?.message });
 
       if (signUpError) {
         throw signUpError;
@@ -183,11 +193,11 @@ export function ProductionSignupForm({ onBack }: { onBack: () => void }) {
           .select('emec_id')
           .eq('user_id', data.user.id)
           .maybeSingle();
-        if (fetchErr) console.warn('[SIGNUP] profile fetch error', fetchErr.message);
+        if (fetchErr) console.warn(`[SIGNUP ${trace}] profile fetch error`, fetchErr.message);
         if (p?.emec_id) { profile = p; break; }
         await new Promise(r => setTimeout(r, 150 + attempt * 150));
       }
-      console.log('[SIGNUP] profile after trigger', profile);
+      console.log(`[SIGNUP ${trace}] profile after trigger`, profile);
 
       const profileUpdates: Record<string, string | null> = {
           full_name: metadata.full_name,
@@ -207,11 +217,11 @@ export function ProductionSignupForm({ onBack }: { onBack: () => void }) {
 
       // Fire-and-forget metadata updates — never block UI.
       supabase.from('profiles').update(profileUpdates).eq('user_id', data.user.id).then(({ error: updateError }) => {
-        if (updateError) console.error('[SIGNUP] profile update error:', updateError);
+        if (updateError) console.error(`[SIGNUP ${trace}] profile update error:`, updateError);
       });
       if (metadata.facility_name) {
         supabase.from('user_roles').update({ facility_name: metadata.facility_name }).eq('user_id', data.user.id).then(({ error }) => {
-          if (error) console.error('[SIGNUP] role update error:', error);
+          if (error) console.error(`[SIGNUP ${trace}] role update error:`, error);
         });
       }
 
@@ -220,13 +230,13 @@ export function ProductionSignupForm({ onBack }: { onBack: () => void }) {
       setStep('success');
       toast({ title: '🎉 Account Created!', description: 'Your EMEC account is ready.' });
     } catch (err) {
-      console.error('[SIGNUP] failed:', err);
+      console.error(`[SIGNUP ${trace}] failed:`, err);
       const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
-      setError(errorMessage);
+      setError(`${errorMessage} (trace ${trace})`);
     } finally {
       setIsLoading(false);
       sessionStorage.removeItem('signup_in_progress');
-      console.log('[SIGNUP] finished, loading cleared');
+      console.log(`[SIGNUP ${trace}] finished, loading cleared`);
     }
   };
 
@@ -538,7 +548,30 @@ export function ProductionSignupForm({ onBack }: { onBack: () => void }) {
         {error && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              <div>{error}</div>
+              {traceId && (
+                <div className="mt-2 flex items-center gap-2 text-xs font-mono opacity-80">
+                  <span>trace:</span>
+                  <code className="px-1.5 py-0.5 rounded bg-background/40">{traceId}</code>
+                  <button
+                    type="button"
+                    onClick={() => { navigator.clipboard.writeText(traceId); toast({ title: 'Trace ID copied', description: traceId }); }}
+                    className="underline"
+                  >Copy</button>
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isLoading && traceId && (
+          <p className="text-[10px] text-center font-mono text-muted-foreground">trace {traceId}</p>
+        )}
+
+        {false && (
+          <Alert>
+            <AlertDescription>placeholder</AlertDescription>
           </Alert>
         )}
 
