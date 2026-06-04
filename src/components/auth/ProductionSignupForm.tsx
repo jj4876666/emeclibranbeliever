@@ -155,10 +155,9 @@ export function ProductionSignupForm({ onBack }: { onBack: () => void }) {
   const signUp = async (email: string, password: string, metadata: Record<string, string>) => {
     setIsLoading(true);
     setError('');
+    sessionStorage.setItem('signup_in_progress', 'true');
+    console.log('[SIGNUP] starting', { email, account_type: metadata.account_type });
     try {
-      // Set flag to prevent AuthContext from auto-navigating
-      sessionStorage.setItem('signup_in_progress', 'true');
-
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -167,37 +166,36 @@ export function ProductionSignupForm({ onBack }: { onBack: () => void }) {
           emailRedirectTo: window.location.origin,
         },
       });
+      console.log('[SIGNUP] auth.signUp resolved', { hasUser: !!data?.user, error: signUpError?.message });
 
       if (signUpError) {
-        sessionStorage.removeItem('signup_in_progress');
-        setError(signUpError.message);
-        setIsLoading(false);
-        return;
+        throw signUpError;
+      }
+      if (!data?.user) {
+        throw new Error('Signup did not return a user. The email may already be registered.');
       }
 
-      if (data.user) {
-        // OPTIMIZED: Reduced retry delay from 800ms to 200ms for faster signup
-        // Progressive delay for profile creation
-        let profile: { emec_id: string } | null = null;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const { data: p } = await supabase
-            .from('profiles')
-            .select('emec_id')
-            .eq('user_id', data.user.id)
-            .maybeSingle();
-          if (p?.emec_id) { profile = p; break; }
-          await new Promise(r => setTimeout(r, 50 + (attempt * 50)));
-        }
+      // Wait briefly for the handle_new_user trigger to create the profile.
+      let profile: { emec_id: string } | null = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: p, error: fetchErr } = await supabase
+          .from('profiles')
+          .select('emec_id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+        if (fetchErr) console.warn('[SIGNUP] profile fetch error', fetchErr.message);
+        if (p?.emec_id) { profile = p; break; }
+        await new Promise(r => setTimeout(r, 150 + attempt * 150));
+      }
+      console.log('[SIGNUP] profile after trigger', profile);
 
-        // Fire-and-forget profile update — don't block the UI
-        const profileUpdates: Record<string, string | null> = {
+      const profileUpdates: Record<string, string | null> = {
           full_name: metadata.full_name,
           date_of_birth: metadata.date_of_birth || null,
           gender: metadata.gender || null,
           phone: metadata.phone || null,
           account_type: metadata.account_type,
         };
-
         if (metadata.emergency_contact) {
           profileUpdates.emergency_contact = JSON.parse(metadata.emergency_contact);
         }
@@ -207,33 +205,28 @@ export function ProductionSignupForm({ onBack }: { onBack: () => void }) {
         if (metadata.parent_phone) profileUpdates.parent_phone = metadata.parent_phone;
         if (metadata.parent_email) profileUpdates.parent_email = metadata.parent_email;
 
-        // Fire updates in background
-        supabase.from('profiles').update(profileUpdates).eq('user_id', data.user.id).then(({ error: updateError }) => {
-          if (updateError) console.error('Profile update error:', updateError);
-        });
-
-        if (metadata.facility_name) {
-          supabase.from('user_roles').update({ facility_name: metadata.facility_name }).eq('user_id', data.user.id).then(({ error }) => {
-            if (error) console.error('Role update error:', error);
-          });
-        }
-
-        setCreatedEmecId(profile?.emec_id || 'EMEC-' + data.user.id.slice(0, 8).toUpperCase());
-        setIsDemoMode(false);
-        setStep('success');
-        setIsLoading(false);
-
-        toast({
-          title: '🎉 Account Created!',
-          description: 'Your EMEC account is ready.',
+      // Fire-and-forget metadata updates — never block UI.
+      supabase.from('profiles').update(profileUpdates).eq('user_id', data.user.id).then(({ error: updateError }) => {
+        if (updateError) console.error('[SIGNUP] profile update error:', updateError);
+      });
+      if (metadata.facility_name) {
+        supabase.from('user_roles').update({ facility_name: metadata.facility_name }).eq('user_id', data.user.id).then(({ error }) => {
+          if (error) console.error('[SIGNUP] role update error:', error);
         });
       }
+
+      setCreatedEmecId(profile?.emec_id || 'EMEC-' + data.user.id.slice(0, 8).toUpperCase());
+      setIsDemoMode(false);
+      setStep('success');
+      toast({ title: '🎉 Account Created!', description: 'Your EMEC account is ready.' });
     } catch (err) {
-      console.error('Signup error:', err);
-      sessionStorage.removeItem('signup_in_progress');
+      console.error('[SIGNUP] failed:', err);
       const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
       setError(errorMessage);
+    } finally {
       setIsLoading(false);
+      sessionStorage.removeItem('signup_in_progress');
+      console.log('[SIGNUP] finished, loading cleared');
     }
   };
 
