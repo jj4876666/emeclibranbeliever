@@ -144,21 +144,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     sessionStorage.removeItem('signup_in_progress');
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (sessionStorage.getItem('signup_in_progress')) return;
-
-      if (session?.user) {
-        const profile = await fetchProfileWithRetry(session.user.id);
-        if (profile) {
-          const user = buildLiveUser(session, profile);
-          setCurrentUser(user);
-          setIsLiveUser(true);
-        }
-      } else if (!session && isLiveUser) {
-        setCurrentUser(null);
-        setIsLiveUser(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (sessionStorage.getItem('signup_in_progress')) {
+        setIsAuthLoading(false);
+        return;
       }
-      setIsAuthLoading(false);
+
+      setTimeout(async () => {
+        if (session?.user) {
+          const profile = await fetchProfileWithRetry(session.user.id);
+          if (profile) {
+            const user = buildLiveUser(session, profile);
+            setCurrentUser(user);
+            setIsLiveUser(true);
+          }
+        } else if (!session) {
+          setCurrentUser(null);
+          setIsLiveUser(false);
+        }
+        setIsAuthLoading(false);
+      }, 0);
     });
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
