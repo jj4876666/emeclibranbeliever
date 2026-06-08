@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   Stethoscope, User, FileText, Syringe, Pill, 
   AlertTriangle, ClipboardList, Building2,
-  ShieldCheck, Plus, Save, History, Activity, Users, RefreshCw, FileCheck
+  ShieldCheck, Plus, Save, History, Activity, RefreshCw, FileCheck, Search, X
 } from 'lucide-react';
 
 interface LivePatient {
@@ -44,6 +44,7 @@ interface MedicalUpdate {
   officer_name: string | null;
   facility_name: string | null;
   created_at: string;
+  status?: string;
 }
 
 export function HealthOfficerDashboard() {
@@ -54,9 +55,10 @@ export function HealthOfficerDashboard() {
   const [selectedPatient, setSelectedPatient] = useState<LivePatient | null>(null);
   const [patientUpdates, setPatientUpdates] = useState<MedicalUpdate[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('patients');
+  const [emecQuery, setEmecQuery] = useState('');
+  const [looking, setLooking] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [tab, setTab] = useState('lookup');
 
   const [updateType, setUpdateType] = useState('vitals');
   const [formTitle, setFormTitle] = useState('');
@@ -66,21 +68,54 @@ export function HealthOfficerDashboard() {
   const officerName = currentUser?.name || 'Health Officer';
   const facilityName = (currentUser as AdminUser)?.facilityName || 'EMEC Facility';
 
-  // Fetch all patients from Supabase
-  const fetchPatients = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, user_id, full_name, emec_id, account_type, blood_group, gender, date_of_birth, phone, created_at')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching patients:', error);
-      toast({ title: 'Error', description: 'Failed to load patients', variant: 'destructive' });
-    } else {
-      setPatients(data || []);
+  // Look up a single patient by their EMEC ID. Officers do NOT see any patient
+  // list by default — each officer account starts with an empty roster.
+  const lookupByEmecId = async () => {
+    const q = emecQuery.trim().toUpperCase();
+    setLookupError(null);
+    if (!q) {
+      setLookupError('Enter an EMEC ID to open a patient record.');
+      return;
     }
-    setLoading(false);
+    setLooking(true);
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id, user_id, full_name, emec_id, account_type, blood_group, gender, date_of_birth, phone, created_at')
+        .ilike('emec_id', q)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!profile) {
+        setLookupError(`No patient found with EMEC ID "${q}".`);
+        return;
+      }
+      if (profile.user_id === currentUser?.id) {
+        setLookupError('You cannot open or modify your own records from the Health Officer portal.');
+        return;
+      }
+      // Block opening another health officer's account as a patient
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', profile.user_id);
+      if ((roles || []).some(r => r.role === 'admin')) {
+        setLookupError('This EMEC ID belongs to another health officer and cannot be opened as a patient.');
+        return;
+      }
+
+      setSelectedPatient(profile as LivePatient);
+      setPatients(prev => {
+        const without = prev.filter(p => p.id !== profile.id);
+        return [profile as LivePatient, ...without].slice(0, 10);
+      });
+      setTab('selected');
+    } catch (e) {
+      console.error('[OFFICER] EMEC lookup failed:', e);
+      setLookupError('Lookup failed. Please try again.');
+    } finally {
+      setLooking(false);
+    }
   };
 
   const fetchPatientUpdates = async (patientId: string) => {
@@ -98,7 +133,6 @@ export function HealthOfficerDashboard() {
   };
 
   useEffect(() => {
-    fetchPatients();
     loadAuditLogs();
   }, []);
 
@@ -113,10 +147,7 @@ export function HealthOfficerDashboard() {
     setAuditLogs(logs);
   };
 
-  const filteredPatients = patients.filter(p => 
-    p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.emec_id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const recentPatients = patients;
 
   const updateTypeOptions = [
     { value: 'vitals', label: 'Vital Signs', icon: Activity },
@@ -204,11 +235,12 @@ export function HealthOfficerDashboard() {
       data: formData,
       officer_name: officerName,
       facility_name: facilityName,
+      status: 'pending',
     });
 
     if (error) {
       console.error('Error saving update:', error);
-      toast({ title: 'Error', description: 'Failed to save update. Make sure you are logged in as a health officer.', variant: 'destructive' });
+      toast({ title: 'Error', description: error.message || 'Failed to save update.', variant: 'destructive' });
     } else {
       auditLogger.log({
         officerId: currentUser?.id || '',
@@ -222,7 +254,7 @@ export function HealthOfficerDashboard() {
         updateData: formData,
       });
 
-      toast({ title: 'Update Saved', description: `${formTitle} has been added to ${selectedPatient.full_name}'s records` });
+      toast({ title: 'Sent for patient approval', description: `${selectedPatient.full_name} must approve this update before it joins their permanent record.` });
       setFormTitle('');
       setFormData({});
       fetchPatientUpdates(selectedPatient.id);
