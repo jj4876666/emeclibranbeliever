@@ -325,6 +325,9 @@ export type Database = {
           officer_id: string | null
           officer_name: string | null
           patient_id: string
+          reviewed_at: string | null
+          reviewer_id: string | null
+          status: string
           title: string
           update_type: string
         }
@@ -336,6 +339,9 @@ export type Database = {
           officer_id?: string | null
           officer_name?: string | null
           patient_id: string
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
           title: string
           update_type: string
         }
@@ -347,6 +353,9 @@ export type Database = {
           officer_id?: string | null
           officer_name?: string | null
           patient_id?: string
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
           title?: string
           update_type?: string
         }
