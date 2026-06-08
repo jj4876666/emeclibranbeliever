@@ -314,9 +314,9 @@ export function HealthOfficerDashboard() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="patients" className="gap-2">
-            <Users className="w-4 h-4" />
-            All Patients ({patients.length})
+          <TabsTrigger value="lookup" className="gap-2">
+            <Search className="w-4 h-4" />
+            Open Patient
           </TabsTrigger>
           <TabsTrigger value="selected" className="gap-2" disabled={!selectedPatient}>
             <FileText className="w-4 h-4" />
@@ -328,68 +328,71 @@ export function HealthOfficerDashboard() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Patients List Tab */}
-        <TabsContent value="patients" className="space-y-4 mt-4">
-          <div className="flex gap-2">
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name or EMEC ID..."
-              className="flex-1"
-            />
-            <Button variant="outline" onClick={fetchPatients}>
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-          </div>
+        {/* EMEC ID Lookup Tab */}
+        <TabsContent value="lookup" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="w-5 h-5" />
+                Open a patient by EMEC ID
+              </CardTitle>
+              <CardDescription>
+                Your portal does not list any patients by default. Enter the EMEC ID of a
+                patient (non-health-officer) to open their record.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  value={emecQuery}
+                  onChange={(e) => { setEmecQuery(e.target.value); setLookupError(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') lookupByEmecId(); }}
+                  placeholder="e.g. ABC123XYZ45"
+                  className="flex-1 font-mono uppercase"
+                  autoFocus
+                />
+                <Button onClick={lookupByEmecId} disabled={looking}>
+                  {looking ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  <span className="ml-2">Open</span>
+                </Button>
+              </div>
+              {lookupError && (
+                <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+                  <X className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>{lookupError}</span>
+                </div>
+              )}
 
-          {loading ? (
-            <div className="text-center py-12 text-muted-foreground">Loading patients...</div>
-          ) : filteredPatients.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No patients found</p>
-            </div>
-          ) : (
-            <ScrollArea className="h-[500px]">
-              <div className="space-y-2">
-                {filteredPatients.map((patient) => (
-                  <Card 
-                    key={patient.id} 
-                    className={`cursor-pointer transition-all hover:shadow-md ${selectedPatient?.id === patient.id ? 'border-primary ring-2 ring-primary/20' : ''}`}
-                    onClick={() => { setSelectedPatient(patient); setTab('selected'); }}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <User className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-semibold">{patient.full_name}</p>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <span className="font-mono">{patient.emec_id}</span>
-                              <span>•</span>
-                              <span>{patient.account_type || 'adult'}</span>
-                              {patient.blood_group && (
-                                <>
-                                  <span>•</span>
-                                  <Badge variant="outline" className="text-xs">{patient.blood_group}</Badge>
-                                </>
-                              )}
+              {recentPatients.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Recently opened</p>
+                  <div className="space-y-2">
+                    {recentPatients.map((patient) => (
+                      <button
+                        key={patient.id}
+                        type="button"
+                        onClick={() => { setSelectedPatient(patient); setTab('selected'); }}
+                        className={`w-full text-left p-3 rounded-lg border transition-all hover:shadow-sm ${selectedPatient?.id === patient.id ? 'border-primary ring-2 ring-primary/20' : ''}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                              <User className="w-4 h-4 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-sm">{patient.full_name}</p>
+                              <p className="text-xs text-muted-foreground font-mono">{patient.emec_id}</p>
                             </div>
                           </div>
+                          <Badge variant="outline" className="text-xs">{patient.account_type || 'adult'}</Badge>
                         </div>
-                        <div className="text-right text-xs text-muted-foreground">
-                          <p>Registered</p>
-                          <p>{new Date(patient.created_at).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Selected Patient Tab */}
