@@ -513,6 +513,7 @@ export function HealthOfficerDashboard() {
                       <div className="space-y-3">
                         {patientUpdates.map((update) => {
                           const Icon = getUpdateIcon(update.update_type);
+                          const status = update.status || 'pending';
                           return (
                             <div key={update.id} className="p-4 rounded-lg border">
                               <div className="flex items-start justify-between mb-2">
@@ -521,7 +522,21 @@ export function HealthOfficerDashboard() {
                                     <Icon className="w-4 h-4" />
                                   </div>
                                   <div>
-                                    <p className="font-semibold">{update.title}</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-semibold">{update.title}</p>
+                                      <Badge
+                                        variant="outline"
+                                        className={
+                                          status === 'approved'
+                                            ? 'text-green-700 border-green-300 bg-green-50'
+                                            : status === 'rejected'
+                                            ? 'text-red-700 border-red-300 bg-red-50'
+                                            : 'text-amber-700 border-amber-300 bg-amber-50'
+                                        }
+                                      >
+                                        {status}
+                                      </Badge>
+                                    </div>
                                     <p className="text-xs text-muted-foreground">
                                       {update.update_type.replace('_', ' ')} • {update.officer_name} • {update.facility_name}
                                     </p>
