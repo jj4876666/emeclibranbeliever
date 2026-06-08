@@ -3,10 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { medicalUpdateEmitter } from '@/utils/medicalUpdateEvents';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 import { 
   FileText, Activity, Pill, ClipboardList, AlertTriangle, 
-  Stethoscope, Syringe, RefreshCw
+  Stethoscope, Syringe, RefreshCw, Check, X
 } from 'lucide-react';
 
 interface MedicalUpdateData {
@@ -21,6 +23,7 @@ interface MedicalUpdate {
   officer_name: string | null;
   facility_name: string | null;
   created_at: string;
+  status?: string;
 }
 
 interface Props {
@@ -31,6 +34,28 @@ export function LiveMedicalUpdates({ profileId }: Props) {
   const [updates, setUpdates] = useState<MedicalUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
+  const [reviewing, setReviewing] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const reviewUpdate = async (id: string, status: 'approved' | 'rejected') => {
+    setReviewing(id);
+    const { error } = await supabase
+      .from('medical_updates')
+      .update({ status, reviewed_at: new Date().toISOString() })
+      .eq('id', id);
+    setReviewing(null);
+    if (error) {
+      toast({ title: 'Action failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setUpdates(prev => prev.map(u => u.id === id ? { ...u, status } : u));
+    toast({
+      title: status === 'approved' ? 'Added to your records' : 'Update rejected',
+      description: status === 'approved'
+        ? 'This update is now part of your permanent health record.'
+        : 'The health officer has been notified.',
+    });
+  };
 
   const fetchUpdates = async () => {
     // Check if this is a demo account
@@ -93,6 +118,18 @@ export function LiveMedicalUpdates({ profileId }: Props) {
           },
           (payload) => {
             setUpdates(prev => [payload.new as MedicalUpdate, ...prev]);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'medical_updates',
+            filter: `patient_id=eq.${profileId}`,
+          },
+          (payload) => {
+            setUpdates(prev => prev.map(u => u.id === (payload.new as MedicalUpdate).id ? (payload.new as MedicalUpdate) : u));
           }
         )
         .subscribe();
@@ -164,15 +201,35 @@ export function LiveMedicalUpdates({ profileId }: Props) {
             <div className="space-y-3">
               {updates.map((update) => {
                 const Icon = getIcon(update.update_type);
+                const status = update.status || 'approved';
                 return (
-                  <div key={update.id} className="p-4 rounded-lg border transition-all animate-in fade-in slide-in-from-top-2">
+                  <div
+                    key={update.id}
+                    className={`p-4 rounded-lg border transition-all animate-in fade-in slide-in-from-top-2 ${
+                      status === 'pending' ? 'border-amber-300 bg-amber-50/40 dark:bg-amber-900/10' : ''
+                    } ${status === 'rejected' ? 'opacity-60' : ''}`}
+                  >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className={`p-1.5 rounded-md ${getColor(update.update_type)}`}>
                           <Icon className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="font-semibold">{update.title}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold">{update.title}</p>
+                            <Badge
+                              variant="outline"
+                              className={
+                                status === 'approved'
+                                  ? 'text-green-700 border-green-300 bg-green-50'
+                                  : status === 'rejected'
+                                  ? 'text-red-700 border-red-300 bg-red-50'
+                                  : 'text-amber-700 border-amber-300 bg-amber-50'
+                              }
+                            >
+                              {status === 'pending' ? 'Needs your approval' : status}
+                            </Badge>
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {update.update_type.replace('_', ' ')} • {update.officer_name || 'Unknown'} • {update.facility_name || ''}
                           </p>
@@ -192,6 +249,28 @@ export function LiveMedicalUpdates({ profileId }: Props) {
                         )
                       ))}
                     </div>
+                    {status === 'pending' && !isDemo && (
+                      <div className="flex gap-2 mt-3 pt-3 border-t">
+                        <Button
+                          size="sm"
+                          onClick={() => reviewUpdate(update.id, 'approved')}
+                          disabled={reviewing === update.id}
+                          className="flex-1"
+                        >
+                          <Check className="w-4 h-4 mr-1" />
+                          Approve & add to record
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => reviewUpdate(update.id, 'rejected')}
+                          disabled={reviewing === update.id}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Reject
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
