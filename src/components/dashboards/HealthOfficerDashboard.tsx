@@ -228,8 +228,15 @@ export function HealthOfficerDashboard() {
     }
 
     setSaving(true);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      toast({ title: 'Not signed in', description: 'Your session expired. Please sign in again.', variant: 'destructive' });
+      setSaving(false);
+      return;
+    }
     const { error } = await supabase.from('medical_updates').insert({
       patient_id: selectedPatient.id,
+      officer_id: authUser.id,
       update_type: updateType,
       title: formTitle,
       data: formData,

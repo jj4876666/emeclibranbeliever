@@ -39,14 +39,31 @@ export function LiveMedicalUpdates({ profileId }: Props) {
 
   const reviewUpdate = async (id: string, status: 'approved' | 'rejected') => {
     setReviewing(id);
+    const target = updates.find(u => u.id === id);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from('medical_updates')
-      .update({ status, reviewed_at: new Date().toISOString() })
+      .update({ status, reviewed_at: new Date().toISOString(), reviewer_id: authUser?.id ?? null })
       .eq('id', id);
     setReviewing(null);
     if (error) {
       toast({ title: 'Action failed', description: error.message, variant: 'destructive' });
       return;
+    }
+    // Append an immutable audit entry — chronological by created_at
+    if (target) {
+      await supabase.from('audit_logs').insert({
+        patient_id: profileId,
+        performed_by: authUser?.id ?? null,
+        action_type: status === 'approved' ? 'UPDATE_APPROVED' : 'UPDATE_REJECTED',
+        action_description:
+          status === 'approved'
+            ? `Patient approved "${target.title}" (${target.update_type.replace('_', ' ')}) — added to permanent record.`
+            : `Patient rejected "${target.title}" (${target.update_type.replace('_', ' ')}).`,
+        officer_name: target.officer_name,
+        facility_name: target.facility_name,
+        metadata: { medical_update_id: id, update_type: target.update_type, data: target.data },
+      });
     }
     setUpdates(prev => prev.map(u => u.id === id ? { ...u, status } : u));
     toast({
