@@ -36,6 +36,7 @@ import AccessibilityPage from "./pages/Accessibility";
 import HelpCenter from "./pages/HelpCenter";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
+import ApproveUpdate from "./pages/ApproveUpdate";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ function AppRoutes() {
       <Route path="/index" element={<AuthEntryRoute />} />
       <Route path="/login" element={<PublicRoute><EnhancedLoginPage /></PublicRoute>} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/approve-update/:id" element={<ProtectedRoute><ApproveUpdate /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/education" element={<ProtectedRoute><Education /></ProtectedRoute>} />
       <Route path="/premium" element={<ProtectedRoute><Premium /></ProtectedRoute>} />
